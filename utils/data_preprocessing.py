@@ -1,5 +1,13 @@
 import pandas as pd
 import numpy as np
+import google.generativeai as genai
+from dotenv import load_dotenv
+import os
+
+# Load the API key from the environment
+load_dotenv()
+genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+model = genai.GenerativeModel("gemini-1.5-flash")
 
 def preprocess_data(df):
     """
@@ -17,9 +25,9 @@ def preprocess_data(df):
 
     # Fill missing values
     for col in df.columns:
-        if df[col].dtype == 'object':  # Categorical columns
+        if df[col].dtype == 'object':  
             if df[col].isnull().all():
-                df[col] = "Unknown"  # Replace entirely missing columns with "Unknown"
+                df[col] = "Unknown"  
             else:
                 df[col].fillna(df[col].mode()[0], inplace=True)  # Fill with mode
         else:  # Numeric columns (if any exist)
@@ -75,6 +83,57 @@ def identify_key_columns(df):
             key_columns.append(col)
 
     return key_columns
+
+import openai  # Assuming you're using OpenAI's API, replace with Gemini's client if needed
+
+def identify_key_columns_gem(df):
+    """
+    Identify key columns for visualization based on variability, missing values,
+    and insights from the Gemini API using a prompt.
+    """
+    key_columns = []
+    
+    try:
+        # Convert dataframe to a string or structured format that Gemini can analyze (e.g., JSON or CSV format)
+        data_structure = {col: str(dtype) for col, dtype in df.dtypes.items()}
+        
+        # Define a prompt to send to the Gemini API
+        prompt = f"""
+        Please analyze the following dataset dataframe and identify the most important columns 
+        for visualization based on their variability, relevance, and importance. 
+        Exclude columns with high missing values or low variability. Keep the names of the columns exactly the same as the dataset. 
+        I will be using response.text.strip().split(", ") to extract column names.
+
+        Dataset:
+        {data_structure}
+        """
+        
+        try:
+            # Use Gemini to generate the response
+            response = model.generate_content(prompt)
+                     
+            # Extract key columns from the response (adjust based on how the Gemini API formats its response)
+            gemini_key_columns = response.text.strip().split(", ")
+            
+            # Combine Gemini's insights with local checks
+            for col in df.columns:
+                # Exclude columns with low variability or too many missing values
+                if df[col].nunique() > 1 and df[col].isnull().mean() < 0.5:
+                    # Include column if it is identified by Gemini or passes local checks
+                    if col in gemini_key_columns or df[col].nunique() > 1:
+                        key_columns.append(col)
+
+            # Remove duplicates (if any)
+            key_columns = list(set(key_columns))
+    
+            return key_columns
+        
+        except Exception as e:
+            print(f"Error generating response from Gemini: {e}")
+
+    except Exception as e:
+        print(f"Error identifying key columns using Gemini: {e}")
+
 
 def categorize_time_series_columns(df):
     """

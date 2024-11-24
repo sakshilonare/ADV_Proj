@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
-from utils.data_preprocessing import preprocess_data, categorize_columns, identify_key_columns, categorize_time_series_columns
+from utils.data_preprocessing import preprocess_data, categorize_columns, identify_key_columns, categorize_time_series_columns, identify_key_columns_gem
 from utils.query_handler import interpret_query, execute_code
-from utils.visualizations import bar_chart, scatter_plot, histogram, boxplot, heatmap, pairplot, sankey_diagram, wordcloud_plot, time_series_plot, regression_plot
+from utils.visualizations import bar_chart, scatter_plot, histogram, boxplot, heatmap, pairplot, sankey_diagram,  time_series_plot, regression_plot
 import matplotlib.pyplot as plt
 from PIL import Image
 import csv
+
 
 # Prevent decompression bomb errors
 Image.MAX_IMAGE_PIXELS = None
@@ -51,7 +52,7 @@ def main():
 
             # Categorize columns
             categorized_cols = categorize_columns(df)
-            key_columns = identify_key_columns(df)
+            key_columns = identify_key_columns_gem(df)
             time_Series_col = categorize_time_series_columns(df)
 
             st.write("### Key Columns")
@@ -84,6 +85,9 @@ def main():
                 
                 if st.checkbox("Generate Pairplot for Numeric Columns"):
                     selected_visualizations.append("pairplot")
+
+                if st.checkbox("Generate Scatter Plot for Numeric Columns"):
+                    selected_visualizations.append("scatter_plot")
 
             if len(time_Series_col) > 0:
                 if st.checkbox("Generate Time Series Plot"):
@@ -207,15 +211,14 @@ def main():
                 with st.spinner("Processing your query..."):
                     code = interpret_query(df, query)
                 
-                st.code(code, language="python") 
                 try:
-                    plt = execute_code(code)
-                    if plt:
+                    plt = execute_code(code,df)
+                    if plt:                        
                         st.pyplot(plt)
                     else:
                         st.error("No visualization was generated.")
                 except Exception as e:
-                    st.error(f"Error executing code: {e}")
+                    st.error("")
         except Exception as e:
             st.error(f"Error processing the file: {e}")
     else:
